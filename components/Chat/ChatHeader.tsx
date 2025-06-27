@@ -3,11 +3,11 @@
 import { env } from 'next-runtime-env'
 
 import React, { useContext, useState, useRef, useEffect } from 'react';
-import { 
-  IconArrowsSort, 
-  IconMobiledataOff, 
-  IconSun, 
-  IconMoonFilled, 
+import {
+  IconArrowsSort,
+  IconMobiledataOff,
+  IconSun,
+  IconMoonFilled,
   IconUserFilled,
   IconChevronLeft,
   IconChevronRight
@@ -32,8 +32,8 @@ export const ChatHeader = ({ webSocketModeRef = {} }) => {
         },
         dispatch: homeDispatch,
       } = useContext(HomeContext);
-    
-    
+
+
     const handleLogin = () => {
         console.log('Login clicked');
         setIsMenuOpen(false);
@@ -53,10 +53,10 @@ export const ChatHeader = ({ webSocketModeRef = {} }) => {
     return (
         <div className={`top-0 z-10 flex justify-center items-center h-12 ${selectedConversation?.messages?.length === 0 ? 'bg-none' : 'bg-[#76b900] sticky'}  py-2 px-4 text-sm text-white dark:border-none dark:bg-black dark:text-neutral-200`}>
             {
-                selectedConversation?.messages?.length > 0 ? 
+                selectedConversation?.messages?.length > 0 ?
                 <div className={`absolute top-6 left-1/2 transform -translate-x-1/2 -translate-y-1/2`}>
                     <span className="text-lg font-semibold text-white">{workflow}</span>
-                </div> 
+                </div>
                 :
                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 mx-auto flex flex-col space-y-5 md:space-y-10 px-3 pt-5 md:pt-12 sm:max-w-[600px] text-center">
                   <div className="text-3xl font-semibold text-gray-800 dark:text-white">
@@ -66,11 +66,11 @@ export const ChatHeader = ({ webSocketModeRef = {} }) => {
                     How can I assist you today?
                   </div>
                 </div>
-            } 
+            }
 
             {/* Collapsible Menu */}
             <div className={`fixed right-0 top-0 h-12 flex items-center transition-all duration-300 ${isExpanded ? 'mr-2' : 'mr-2'}`}>
-                <button 
+                <button
                     onClick={() => {
                         setIsExpanded(!isExpanded)}
                     }
@@ -80,28 +80,6 @@ export const ChatHeader = ({ webSocketModeRef = {} }) => {
                 </button>
 
                 <div className={`flex sm: gap-1 md:gap-4 overflow-hidden transition-all duration-300 ${isExpanded ? 'w-auto opacity-100' : 'w-0 opacity-0'}`}>
-                    {/* Chat History Toggle */}
-                    <div className="flex items-center gap-2 whitespace-nowrap">
-                        <label className="flex items-center gap-2 cursor-pointer flex-shrink-0">
-                            <span className="text-sm font-medium text-black dark:text-white">Chat History</span>
-                            <div
-                                onClick={() => {
-                                    homeDispatch({
-                                        field: 'chatHistory',
-                                        value: !chatHistory,
-                                    });
-                                }}
-                                className={`relative inline-flex h-5 w-10 items-center cursor-pointer rounded-full transition-colors duration-300 ease-in-out ${
-                                    chatHistory ? 'bg-black dark:bg-[#76b900]' : 'bg-gray-200'
-                                }`}
-                            >
-                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 ease-in-out ${
-                                    chatHistory ? 'translate-x-6' : 'translate-x-0'
-                                }`} />
-                            </div>
-                        </label>
-                    </div>
-
                     {/* WebSocket Mode Toggle */}
                     <div className="flex items-center gap-2 whitespace-nowrap">
                         <label className="flex items-center gap-2 cursor-pointer flex-shrink-0">
@@ -154,7 +132,7 @@ export const ChatHeader = ({ webSocketModeRef = {} }) => {
 
                     {/* User Icon with Dropdown Menu */}
                     <div className="relative" ref={menuRef}>
-                        <button 
+                        <button
                             onClick={() => setIsMenuOpen(!isMenuOpen)}
                             className="flex items-center dark:text-white text-black cursor-pointer"
                         >
