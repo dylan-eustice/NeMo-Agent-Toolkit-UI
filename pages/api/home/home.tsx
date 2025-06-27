@@ -8,6 +8,7 @@ import Head from 'next/head';
 
 import { useCreateReducer } from '@/hooks/useCreateReducer';
 
+import { TextDisplay } from '@/components/TextDisplay/TextDisplay';
 
 import {
   cleanConversationHistory,
@@ -34,6 +35,9 @@ import { HomeInitialState, initialState } from './home.state';
 
 import { v4 as uuidv4 } from 'uuid';
 import { getWorkflowName } from '@/utils/app/helper';
+import { ChatHeader } from '@/components/Chat/ChatHeader';
+
+const webSocketMode = initialState.webSocketMode;
 
 const Home = (props: any) => {
   const { t } = useTranslation('chat');
@@ -42,7 +46,7 @@ const Home = (props: any) => {
     initialState,
   });
 
-  let workflow =  'AIQ Toolkit';
+  let workflow =  'AgentIQ';
 
   const {
     state: {
@@ -50,11 +54,16 @@ const Home = (props: any) => {
       folders,
       conversations,
       selectedConversation,
+      availableChannels,
     },
     dispatch,
   } = contextValue;
 
   const stopConversationRef = useRef<boolean>(false);
+
+  const webSocketModeRef = useRef(
+    typeof window !== 'undefined' && sessionStorage.getItem('webSocketMode') === 'false' ? false : webSocketMode
+  );
 
   const handleSelectConversation = (conversation: Conversation) => {
     dispatch({
@@ -158,6 +167,17 @@ const Home = (props: any) => {
     dispatch({ field: 'conversations', value: all });
   };
 
+  const handleChannelChange = (channel: number) => {
+    if (selectedConversation) {
+      const updatedConversation = {
+        ...selectedConversation,
+        selectedChannel: channel,
+      };
+      dispatch({ field: 'selectedConversation', value: updatedConversation });
+      saveConversation(updatedConversation);
+    }
+  };
+
   // EFFECTS  --------------------------------------------
 
   useEffect(() => {
@@ -223,6 +243,30 @@ const Home = (props: any) => {
     }
   }, [dispatch, t]);
 
+  // Poll /api/update-text every 2 seconds to discover available channels
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        // Get available channels
+        const channelsRes = await fetch('/api/update-text');
+        if (channelsRes.ok) {
+          const channelsData = await channelsRes.json();
+          if (channelsData.channels && Array.isArray(channelsData.channels)) {
+            // Only update if channels actually changed
+            const currentChannels = availableChannels || [];
+            const newChannels = channelsData.channels;
+            if (JSON.stringify(currentChannels.sort()) !== JSON.stringify(newChannels.sort())) {
+              dispatch({ field: 'availableChannels', value: newChannels });
+            }
+          }
+        }
+      } catch (err) {
+        // Optionally handle error
+      }
+    }, 2000); // Less frequent polling for channel discovery
+    return () => clearInterval(interval);
+  }, [dispatch, availableChannels]);
+
   return (
     <HomeContext.Provider
       value={{
@@ -245,9 +289,7 @@ const Home = (props: any) => {
         <link rel="icon" href="/nvidia.jpg" />
       </Head>
       {selectedConversation && (
-        <main
-          className={`flex h-screen w-screen flex-col text-sm text-white dark:text-white ${lightMode}`}
-        >
+        <div className={`flex h-screen w-screen flex-col text-sm text-white dark:text-white ${lightMode}`}>
           <div className="fixed top-0 w-full sm:hidden">
             <Navbar
               selectedConversation={selectedConversation}
@@ -258,11 +300,19 @@ const Home = (props: any) => {
           <div className="flex h-full w-full sm:pt-0">
             <Chatbar />
 
-            <div className="flex flex-1">
-              <Chat />
-            </div>
+            <main className="flex flex-col w-full pt-0 relative border-l md:pt-0 dark:border-white/20 transition-width">
+              <div className="flex-1 flex flex-col bg-white dark:bg-[#343541] min-h-screen">
+                <ChatHeader webSocketModeRef={webSocketModeRef} />
+                                <TextDisplay
+                  availableChannels={availableChannels || []}
+                  selectedChannel={selectedConversation?.selectedChannel || 0}
+                  onChannelChange={handleChannelChange}
+                />
+                <Chat />
+              </div>
+            </main>
           </div>
-        </main>
+        </div>
       )}
     </HomeContext.Provider>
   );
@@ -270,7 +320,7 @@ const Home = (props: any) => {
 export default Home;
 
 export const getServerSideProps: GetServerSideProps = async ({ locale }) => {
-  const defaultModelId = 
+  const defaultModelId =
   process.env.DEFAULT_MODEL || '';
 
   return {

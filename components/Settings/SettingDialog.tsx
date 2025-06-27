@@ -82,7 +82,7 @@ export const SettingDialog: FC<Props> = ({ open, onClose }) => {
           <option value="dark">{t('Dark mode')}</option>
           <option value="light">{t('Light mode')}</option>
         </select>
-      
+
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mt-4">{t('HTTP URL for Chat Completion')}</label>
         <input
           type="text"

@@ -10,18 +10,22 @@ export const config = {
 };
 
 
+// Track initialized conversations to avoid re-initialization
+const initializedConversations = new Set<string>();
+
 const handler = async (req: Request): Promise<Response> => {
 
   // extract the request body
   let {
     chatCompletionURL = '',
     messages = [],
+    conversationId = '',
     additionalProps = {
       enableIntermediateSteps: true
     }
   } = (await req.json()) as ChatBody;
 
-  try {    
+  try {
     let payload
     // for generate end point the request schema is {input_message: "user question"}
     if(chatCompletionURL.includes('generate')) {
@@ -33,7 +37,53 @@ const handler = async (req: Request): Promise<Response> => {
         throw new Error('User message not found: messages array is empty or invalid.');
       }
     }
+    // for new retrieval API format with /call endpoint
+    else if(chatCompletionURL.includes('/call')) {
+      if (messages?.length > 0 && messages[messages.length - 1]?.role === 'user') {
+        // Initialize the retrieval system only once per conversation
+        // Combine RAG_UUID and conversation.id to create unique identifier
+        const ragUuid = (process as any).env.RAG_UUID || '123456';
+        const combinedConversationId = `${ragUuid}-${conversationId || 'default'}`;
 
+        if (!initializedConversations.has(combinedConversationId)) {
+          const initUrl = chatCompletionURL.replace('/call', '/init');
+
+          try {
+            const initResponse = await fetch(initUrl, {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({ uuid: ragUuid }),
+            });
+
+            if (!initResponse.ok) {
+              console.log('aiq - initialization failed', initResponse.status);
+              throw new Error(`Initialization failed: ${initResponse.statusText}`);
+            }
+
+            const initData = await initResponse.json();
+            console.log('aiq - initialization successful', initData?.status);
+
+            // Mark this conversation as initialized
+            initializedConversations.add(combinedConversationId);
+          } catch (initError) {
+            console.log('aiq - initialization error', initError);
+            throw new Error(`Initialization failed: ${initError instanceof Error ? initError.message : 'Unknown error'}`);
+          }
+        } else {
+          console.log('aiq - conversation already initialized', combinedConversationId);
+        }
+
+        payload = {
+          state: {
+            chat: {
+              question: messages[messages.length - 1]?.content ?? ''
+            }
+          }
+        };
+      } else {
+        throw new Error('User message not found: messages array is empty or invalid.');
+      }
+    }
     // for chat end point it is openAI compatible schema
     else {
       payload = {
@@ -54,10 +104,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     let response = await fetch(chatCompletionURL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Thread-Id': req.headers.get('Thread-Id') || '',
-      },
+      headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(payload),
     });
 
@@ -73,7 +120,7 @@ const handler = async (req: Request): Promise<Response> => {
         else {
           errorMessage = 'HTML response received from server, which cannot be parsed.'
         }
-        
+
       }
       console.log('aiq - received error response from server', errorMessage);
       // For other errors, return a Response object with the error message
@@ -153,7 +200,7 @@ const handler = async (req: Request): Promise<Response> => {
                         intermediate_parent_id,
                         content: {
                           name: name,
-                          payload: details,          
+                          payload: details,
                         },
                         time_stamp,
                         index: counter++
@@ -192,22 +239,23 @@ const handler = async (req: Request): Promise<Response> => {
       console.log('aiq - processing non streaming response');
       const data = await response.text();
       let parsed = null;
-    
+
       try {
         parsed = JSON.parse(data);
       } catch (error) {
         console.log('aiq - error parsing JSON response', error);
       }
-    
+
       // Safely extract content with proper checks
       const content =
+        parsed?.result || // Check for `result`
         parsed?.output || // Check for `output`
         parsed?.answer || // Check for `answer`
         parsed?.value ||  // Check for `value`
         (Array.isArray(parsed?.choices) ? parsed.choices[0]?.message?.content : null) || // Safely check `choices[0]`
         parsed || // Fallback to the entire `parsed` object
         data; // Final fallback to raw `data`
-    
+
       if (content) {
         console.log('aiq - response processing is completed');
         return new Response(content);
@@ -216,7 +264,7 @@ const handler = async (req: Request): Promise<Response> => {
         return new Response(response.body || data);
       }
     }
-    
+
   } catch (error) {
     console.log('error - while making request', error);
     const formattedError = `Something went wrong. Please try again. \n\n<details><summary>Details</summary>Error Message: ${error?.message || 'Unknown error'}</details>`

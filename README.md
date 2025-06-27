@@ -75,6 +75,7 @@ NOTE: Most of the time, you will want to select /chat/stream for intermediate re
   - /generate/stream - Streaming response generation
   - /chat - Single response chat completion
   - /chat/stream - Streaming chat completion
+  - /call - Chat option for Context-Aware RAG retrieval
 - `WebSocket URL for Completion`: WebSocket URL to connect to running AIQ Toolkit server
 - `WebSocket Schema`: Workflow schema type over WebSocket connection
 
@@ -101,6 +102,31 @@ Is 4 + 4 greater than the current hour of the day?
 
 ### Server Communication
 The UI supports both HTTP requests (OpenAI compatible) and WebSocket connections for server communication. For detailed information about WebSocket messaging integration, please refer to the [WebSocket Documentation](https://github.com/NVIDIA/AIQToolkit/blob/main/docs/source/references/websockets.md) in the AIQ Toolkit documentation.
+
+### Supported API Formats
+
+The UI now supports multiple API formats:
+
+1. **NeMo Agent Toolkit Generate API**
+   - Endpoint: `http://127.0.0.1:8000/generate`
+   - Request Format: `{"input_message": "user question"}`
+   - Response Format: `{"output": "response text"}`
+
+2. **Context-Aware RAG Retrieval API**
+   - Initialization Endpoint: `http://127.0.0.1:8000/init`
+   - Initialization Request: `{"uuid": "conversation-id"}`
+   - Initialization Response: `{"status": "success"}`
+   - Main Endpoint: `http://127.0.0.1:8000/call`
+   - Request Format: `{"state": {"chat": {"question": "user question"}}}`
+   - Response Format: `{"result": "response text"}`
+
+3. **OpenAI Compatible API**
+   - Endpoint: `http://127.0.0.1:8000/chat`
+   - Request Format: OpenAI messages format
+   - Response Format: OpenAI completion format
+
+### Configuration
+The default endpoint has been updated to use the new retrieval API format (`/call`). You can configure the endpoint URL using the `NEXT_PUBLIC_HTTP_CHAT_COMPLETION_URL` environment variable.
 
 
 
