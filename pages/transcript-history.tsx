@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { IconRefresh, IconFilter, IconHistory } from '@tabler/icons-react';
+import { IconRefresh, IconFilter, IconHistory, IconSortAscending, IconSortDescending } from '@tabler/icons-react';
 import HomeContext from './api/home/home.context';
 
 interface FinalizedTranscript {
@@ -16,9 +16,23 @@ const TranscriptHistory = () => {
   const [availableChannels, setAvailableChannels] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>(() => {
+    // Initialize from localStorage, fallback to 'newest'
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('transcript-sort-order') as 'newest' | 'oldest') || 'newest';
+    }
+    return 'newest';
+  });
 
   const homeContext = useContext(HomeContext);
   const lightMode = homeContext?.state?.lightMode || 'light';
+
+  // Save sort order to localStorage when it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('transcript-sort-order', sortOrder);
+    }
+  }, [sortOrder]);
 
   // Fetch finalized transcripts
   const fetchTranscripts = async () => {
@@ -44,14 +58,32 @@ const TranscriptHistory = () => {
     }
   };
 
-  // Filter transcripts based on selected channel
+  // Filter and sort transcripts based on selected channel and sort order
   useEffect(() => {
-    if (selectedChannel === null) {
-      setFilteredTranscripts(transcripts);
-    } else {
-      setFilteredTranscripts(transcripts.filter(t => t.channel_id === selectedChannel));
-    }
-  }, [transcripts, selectedChannel]);
+    let filtered = selectedChannel === null
+      ? transcripts
+      : transcripts.filter(t => t.channel_id === selectedChannel);
+
+    // Apply sorting
+    filtered = [...filtered].sort((a, b) => {
+      // First sort by channel_id
+      if (a.channel_id !== b.channel_id) {
+        return a.channel_id - b.channel_id;
+      }
+      // Then sort by timestamp based on sort order
+      // Convert timestamps to numbers to ensure proper comparison
+      const timestampA = typeof a.timestamp === 'string' ? new Date(a.timestamp).getTime() : a.timestamp;
+      const timestampB = typeof b.timestamp === 'string' ? new Date(b.timestamp).getTime() : b.timestamp;
+
+      if (sortOrder === 'newest') {
+        return timestampB - timestampA; // Newest first
+      } else {
+        return timestampA - timestampB; // Oldest first
+      }
+    });
+
+    setFilteredTranscripts(filtered);
+  }, [transcripts, selectedChannel, sortOrder]);
 
   // Initial load and periodic refresh
   useEffect(() => {
@@ -93,14 +125,30 @@ const TranscriptHistory = () => {
                   Transcript History
                 </h1>
               </div>
-              <button
-                onClick={fetchTranscripts}
-                disabled={loading}
-                className="flex items-center space-x-2 px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-md text-white transition-colors disabled:opacity-50"
-              >
-                <IconRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                <span>Refresh</span>
-              </button>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
+                  className="flex items-center space-x-2 px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-md text-white transition-colors"
+                  title={`Sort by ${sortOrder === 'newest' ? 'oldest first' : 'newest first'}`}
+                >
+                  {sortOrder === 'newest' ? (
+                    <IconSortDescending className="w-4 h-4" />
+                  ) : (
+                    <IconSortAscending className="w-4 h-4" />
+                  )}
+                  <span className="hidden sm:inline">
+                    {sortOrder === 'newest' ? 'Newest' : 'Oldest'}
+                  </span>
+                </button>
+                <button
+                  onClick={fetchTranscripts}
+                  disabled={loading}
+                  className="flex items-center space-x-2 px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-md text-white transition-colors disabled:opacity-50"
+                >
+                  <IconRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                  <span>Refresh</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
