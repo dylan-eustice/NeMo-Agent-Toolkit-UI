@@ -93,36 +93,6 @@ export const ChatHeader = ({ webSocketModeRef = {} }) => {
                         </button>
                     </div>
 
-                    {/* WebSocket Mode Toggle */}
-                    <div className="flex items-center gap-2 whitespace-nowrap">
-                        <label className="flex items-center gap-2 cursor-pointer flex-shrink-0">
-                            <span className={`flex items-center gap-1 justify-evenly text-sm font-medium text-black dark:text-white`}>
-                                WebSocket{' '}
-                                {webSocketModeRef?.current && (
-                                    webSocketConnected ? <IconArrowsSort size={18} color="black" /> : <IconMobiledataOff size={18} color="black" />
-                                )}
-                            </span>
-                            <div
-                                onClick={() => {
-                                    const newWebSocketMode = !webSocketModeRef.current;
-                                    sessionStorage.setItem('webSocketMode', String(newWebSocketMode));
-                                    webSocketModeRef.current = newWebSocketMode;
-                                    homeDispatch({
-                                        field: 'webSocketMode',
-                                        value: !webSocketMode,
-                                    });
-                                }}
-                                className={`relative inline-flex h-5 w-10 items-center cursor-pointer rounded-full transition-colors duration-300 ease-in-out ${
-                                    webSocketModeRef.current ? 'bg-black dark:bg-[#76b900]' : 'bg-gray-200'
-                                }`}
-                            >
-                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 ease-in-out ${
-                                    webSocketModeRef.current ? 'translate-x-6' : 'translate-x-0'
-                                }`} />
-                            </div>
-                        </label>
-                    </div>
-
                     {/* Theme Toggle Button */}
                     <div className="flex items-center dark:text-white text-black transition-colors duration-300">
                         <button
