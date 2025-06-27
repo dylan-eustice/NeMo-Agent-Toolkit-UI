@@ -10,7 +10,8 @@ import {
   IconMoonFilled,
   IconUserFilled,
   IconChevronLeft,
-  IconChevronRight
+  IconChevronRight,
+  IconHistory
 } from '@tabler/icons-react';
 import HomeContext from '@/pages/api/home/home.context';
 import { getWorkflowName } from '@/utils/app/helper';
@@ -80,6 +81,18 @@ export const ChatHeader = ({ webSocketModeRef = {} }) => {
                 </button>
 
                 <div className={`flex sm: gap-1 md:gap-4 overflow-hidden transition-all duration-300 ${isExpanded ? 'w-auto opacity-100' : 'w-0 opacity-0'}`}>
+                    {/* Transcript History Button */}
+                    <div className="flex items-center">
+                        <button
+                            onClick={() => window.open('/transcript-history', '_blank')}
+                            className="flex items-center gap-2 px-3 py-1 text-sm text-black dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                            title="View Transcript History"
+                        >
+                            <IconHistory size={16} />
+                            <span className="hidden sm:inline">History</span>
+                        </button>
+                    </div>
+
                     {/* WebSocket Mode Toggle */}
                     <div className="flex items-center gap-2 whitespace-nowrap">
                         <label className="flex items-center gap-2 cursor-pointer flex-shrink-0">

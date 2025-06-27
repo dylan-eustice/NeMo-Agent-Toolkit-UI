@@ -5,30 +5,87 @@ interface TextData {
   text: string;
   channel_id: number;
   timestamp: number;
+  finalized?: boolean;
+}
+
+interface FinalizedTranscript {
+  text: string;
+  channel_id: number;
+  timestamp: number;
+  id: string; // unique identifier for each finalized transcript
 }
 
 let channelTexts: { [channelId: number]: TextData } = {};
+let finalizedTranscripts: FinalizedTranscript[] = [];
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
-    const { text, channel_id, timestamp } = req.body;
+    const { text, channel_id, timestamp, finalized } = req.body;
     if (typeof text !== 'string') {
       return res.status(400).json({ error: 'Text must be a string.' });
     }
     const channelId = channel_id || 0;
-    channelTexts[channelId] = {
-      text,
-      channel_id: channelId,
-      timestamp: timestamp || Date.now()
-    };
+    const currentTimestamp = timestamp || Date.now();
+
+    if (finalized) {
+      // Store finalized transcript
+      const finalizedTranscript: FinalizedTranscript = {
+        text,
+        channel_id: channelId,
+        timestamp: currentTimestamp,
+        id: `${channelId}-${currentTimestamp}-${Math.random().toString(36).substr(2, 9)}`
+      };
+      finalizedTranscripts.push(finalizedTranscript);
+
+      // Sort by channel_id, then by timestamp
+      finalizedTranscripts.sort((a, b) => {
+        if (a.channel_id !== b.channel_id) {
+          return a.channel_id - b.channel_id;
+        }
+        return a.timestamp - b.timestamp;
+      });
+
+      // Clear the live text for this channel since it's now finalized
+      if (channelTexts[channelId]) {
+        channelTexts[channelId].text = '';
+      }
+    } else {
+      // Store live text
+      channelTexts[channelId] = {
+        text,
+        channel_id: channelId,
+        timestamp: currentTimestamp,
+        finalized: false
+      };
+    }
+
     return res.status(200).json({ success: true });
   }
 
   if (req.method === 'GET') {
-    const { channel } = req.query;
+    const { channel, type } = req.query;
+
+    if (type === 'finalized') {
+      // Get finalized transcripts
+      if (channel !== undefined) {
+        const channelId = parseInt(channel as string);
+        const channelFinalizedTranscripts = finalizedTranscripts.filter(
+          transcript => transcript.channel_id === channelId
+        );
+        return res.status(200).json({
+          transcripts: channelFinalizedTranscripts,
+          channel_id: channelId
+        });
+      } else {
+        // Get all finalized transcripts
+        return res.status(200).json({
+          transcripts: finalizedTranscripts
+        });
+      }
+    }
 
     if (channel !== undefined) {
-      // Get text for specific channel
+      // Get live text for specific channel
       const channelId = parseInt(channel as string);
       const channelData = channelTexts[channelId];
       return res.status(200).json({
@@ -36,7 +93,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
         channel_id: channelId
       });
     } else {
-      // Get all available channels
+      // Get all available channels with live text
       const channels = Object.keys(channelTexts).map(id => parseInt(id));
       return res.status(200).json({
         channels,
