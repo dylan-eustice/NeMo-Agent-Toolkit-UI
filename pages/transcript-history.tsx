@@ -4,7 +4,7 @@ import HomeContext from './api/home/home.context';
 
 interface FinalizedTranscript {
   text: string;
-  channel_id: number;
+  stream_id: string;
   timestamp: number;
   id: string;
   uuid?: string;
@@ -14,8 +14,8 @@ interface FinalizedTranscript {
 const TranscriptHistory = () => {
   const [transcripts, setTranscripts] = useState<FinalizedTranscript[]>([]);
   const [filteredTranscripts, setFilteredTranscripts] = useState<FinalizedTranscript[]>([]);
-  const [selectedChannel, setSelectedChannel] = useState<number | null>(null);
-  const [availableChannels, setAvailableChannels] = useState<number[]>([]);
+  const [selectedStream, setSelectedStream] = useState<string | null>(null);
+  const [availableStreams, setAvailableStreams] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>(() => {
@@ -47,10 +47,10 @@ const TranscriptHistory = () => {
       const data = await response.json();
       setTranscripts(data.transcripts || []);
 
-      // Extract unique channel IDs
-      const channelIds = data.transcripts.map((t: FinalizedTranscript) => t.channel_id);
-      const channels = Array.from(new Set(channelIds)).sort((a: number, b: number) => a - b);
-      setAvailableChannels(channels);
+      // Extract unique stream IDs
+      const streamIds = data.transcripts.map((t: FinalizedTranscript) => t.stream_id);
+      const streams = Array.from(new Set<string>(streamIds)).sort((a: string, b: string) => a.localeCompare(b));
+      setAvailableStreams(streams);
 
       setError(null);
     } catch (err) {
@@ -60,17 +60,17 @@ const TranscriptHistory = () => {
     }
   };
 
-  // Filter and sort transcripts based on selected channel and sort order
+  // Filter and sort transcripts based on selected stream and sort order
   useEffect(() => {
-    let filtered = selectedChannel === null
+    let filtered = selectedStream === null
       ? transcripts
-      : transcripts.filter(t => t.channel_id === selectedChannel);
+      : transcripts.filter((t: FinalizedTranscript) => t.stream_id === selectedStream);
 
     // Apply sorting
     filtered = [...filtered].sort((a, b) => {
-      // First sort by channel_id
-      if (a.channel_id !== b.channel_id) {
-        return a.channel_id - b.channel_id;
+      // First sort by stream_id
+      if (a.stream_id !== b.stream_id) {
+        return a.stream_id.localeCompare(b.stream_id);
       }
       // Then sort by timestamp based on sort order
       // Convert timestamps to numbers to ensure proper comparison
@@ -85,7 +85,7 @@ const TranscriptHistory = () => {
     });
 
     setFilteredTranscripts(filtered);
-  }, [transcripts, selectedChannel, sortOrder]);
+  }, [transcripts, selectedStream, sortOrder]);
 
   // Initial load and periodic refresh
   useEffect(() => {
@@ -98,11 +98,19 @@ const TranscriptHistory = () => {
     return new Date(timestamp).toLocaleString();
   };
 
-  const formatChannelName = (channelId: number) => {
-    return `Channel ${channelId}`;
+  const formatStreamName = (streamId: string) => {
+    return streamId || 'Default Stream';
   };
 
-  const getChannelColor = (channelId: number) => {
+  const getStreamColor = (streamId: string) => {
+    // Generate a consistent color based on stream ID hash
+    let hash = 0;
+    for (let i = 0; i < streamId.length; i++) {
+      const char = streamId.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+
     const colors = [
       'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
       'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
@@ -110,8 +118,10 @@ const TranscriptHistory = () => {
       'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
       'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
       'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
+      'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
+      'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
     ];
-    return colors[channelId % colors.length];
+    return colors[Math.abs(hash) % colors.length];
   };
 
   return (
@@ -157,19 +167,19 @@ const TranscriptHistory = () => {
 
         {/* Content */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Channel Filter */}
+          {/* Stream Filter */}
           <div className="mb-6">
             <div className="flex items-center space-x-4">
               <IconFilter className="w-5 h-5 text-gray-500 dark:text-gray-400" />
               <select
-                value={selectedChannel ?? ''}
-                onChange={(e) => setSelectedChannel(e.target.value ? parseInt(e.target.value) : null)}
+                value={selectedStream ?? ''}
+                onChange={(e) => setSelectedStream(e.target.value ? e.target.value : null)}
                 className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-[#76b900] focus:border-transparent"
               >
-                <option value="">All Channels</option>
-                {availableChannels.map(channelId => (
-                  <option key={channelId} value={channelId}>
-                    {formatChannelName(channelId)}
+                <option value="">All Streams</option>
+                {availableStreams.map((streamId: string) => (
+                  <option key={streamId} value={streamId}>
+                    {formatStreamName(streamId)}
                   </option>
                 ))}
               </select>
@@ -201,8 +211,8 @@ const TranscriptHistory = () => {
                 No transcripts found
               </h3>
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {selectedChannel !== null
-                  ? `No finalized transcripts for ${formatChannelName(selectedChannel)}`
+                {selectedStream !== null
+                  ? `No finalized transcripts for ${formatStreamName(selectedStream)}`
                   : 'No finalized transcripts available'
                 }
               </p>
@@ -212,15 +222,15 @@ const TranscriptHistory = () => {
           {/* Transcripts List */}
           {filteredTranscripts.length > 0 && (
             <div className="space-y-4">
-              {filteredTranscripts.map((transcript) => (
+              {filteredTranscripts.map((transcript: FinalizedTranscript) => (
                 <div
                   key={transcript.id}
                   className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center space-x-3">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getChannelColor(transcript.channel_id)}`}>
-                        {formatChannelName(transcript.channel_id)}
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStreamColor(transcript.stream_id)}`}>
+                        {formatStreamName(transcript.stream_id)}
                       </span>
                       {/* Processing Status Indicator */}
                       {transcript.pending !== undefined && (
@@ -232,12 +242,12 @@ const TranscriptHistory = () => {
                           {transcript.pending ? (
                             <>
                               <IconClock className="w-3 h-3 mr-1" />
-                              Pending Database Processing
+                              Database Pending
                             </>
                           ) : (
                             <>
                               <IconCheck className="w-3 h-3 mr-1" />
-                              Ingested by Database
+                              Database Ingested
                             </>
                           )}
                         </span>

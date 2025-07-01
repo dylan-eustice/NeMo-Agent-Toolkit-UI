@@ -1,63 +1,63 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-// Module-level variable to store text for multiple channels
+// Module-level variable to store text for multiple streams
 interface TextData {
   text: string;
-  channel_id: number;
+  stream_id: string;
   timestamp: number;
   finalized?: boolean;
 }
 
 interface FinalizedTranscript {
   text: string;
-  channel_id: number;
+  stream_id: string;
   timestamp: number;
   id: string; // unique identifier for each finalized transcript
   uuid?: string; // UUID from the backend for database tracking
   pending?: boolean; // indicates if transcript is pending database processing
 }
 
-let channelTexts: { [channelId: number]: TextData } = {};
+let streamTexts: { [streamId: string]: TextData } = {};
 let finalizedTranscripts: FinalizedTranscript[] = [];
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
-    const { text, channel_id, timestamp, finalized, uuid } = req.body;
+    const { text, stream_id, timestamp, finalized, uuid } = req.body;
     if (typeof text !== 'string') {
       return res.status(400).json({ error: 'Text must be a string.' });
     }
-    const channelId = channel_id || 0;
+    const streamId = stream_id || 'default';
     const currentTimestamp = timestamp || Date.now();
 
     if (finalized) {
       // Store finalized transcript
       const finalizedTranscript: FinalizedTranscript = {
         text,
-        channel_id: channelId,
+        stream_id: streamId,
         timestamp: currentTimestamp,
-        id: `${channelId}-${currentTimestamp}-${Math.random().toString(36).substr(2, 9)}`,
+        id: `${streamId}-${currentTimestamp}-${Math.random().toString(36).substr(2, 9)}`,
         uuid: uuid, // Store the UUID from the backend
         pending: true // Initially mark as pending database processing
       };
       finalizedTranscripts.push(finalizedTranscript);
 
-      // Sort by channel_id, then by timestamp
+      // Sort by stream_id, then by timestamp
       finalizedTranscripts.sort((a, b) => {
-        if (a.channel_id !== b.channel_id) {
-          return a.channel_id - b.channel_id;
+        if (a.stream_id !== b.stream_id) {
+          return a.stream_id.localeCompare(b.stream_id);
         }
         return a.timestamp - b.timestamp;
       });
 
-      // Clear the live text for this channel since it's now finalized
-      if (channelTexts[channelId]) {
-        channelTexts[channelId].text = '';
+      // Clear the live text for this stream since it's now finalized
+      if (streamTexts[streamId]) {
+        streamTexts[streamId].text = '';
       }
     } else {
       // Store live text
-      channelTexts[channelId] = {
+      streamTexts[streamId] = {
         text,
-        channel_id: channelId,
+        stream_id: streamId,
         timestamp: currentTimestamp,
         finalized: false
       };
@@ -67,18 +67,18 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   if (req.method === 'GET') {
-    const { channel, type } = req.query;
+    const { stream, type } = req.query;
 
     if (type === 'finalized') {
       // Get finalized transcripts
-      if (channel !== undefined) {
-        const channelId = parseInt(channel as string);
-        const channelFinalizedTranscripts = finalizedTranscripts.filter(
-          transcript => transcript.channel_id === channelId
+      if (stream !== undefined) {
+        const streamId = stream as string;
+        const streamFinalizedTranscripts = finalizedTranscripts.filter(
+          transcript => transcript.stream_id === streamId
         );
         return res.status(200).json({
-          transcripts: channelFinalizedTranscripts,
-          channel_id: channelId
+          transcripts: streamFinalizedTranscripts,
+          stream_id: streamId
         });
       } else {
         // Get all finalized transcripts
@@ -88,20 +88,20 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
       }
     }
 
-    if (channel !== undefined) {
-      // Get live text for specific channel
-      const channelId = parseInt(channel as string);
-      const channelData = channelTexts[channelId];
+    if (stream !== undefined) {
+      // Get live text for specific stream
+      const streamId = stream as string;
+      const streamData = streamTexts[streamId];
       return res.status(200).json({
-        text: channelData?.text || '',
-        channel_id: channelId
+        text: streamData?.text || '',
+        stream_id: streamId
       });
     } else {
-      // Get all available channels with live text
-      const channels = Object.keys(channelTexts).map(id => parseInt(id));
+      // Get all available streams with live text
+      const streams = Object.keys(streamTexts);
       return res.status(200).json({
-        channels,
-        texts: channelTexts
+        streams,
+        texts: streamTexts
       });
     }
   }

@@ -21,5 +21,5 @@ export interface Conversation {
   name: string;
   messages: Message[];
   folderId: string | null;
-  selectedChannel?: number;
+  selectedStream?: string;
 }

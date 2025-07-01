@@ -54,7 +54,7 @@ const Home = (props: any) => {
       folders,
       conversations,
       selectedConversation,
-      availableChannels,
+      availableStreams,
     },
     dispatch,
   } = contextValue;
@@ -167,11 +167,11 @@ const Home = (props: any) => {
     dispatch({ field: 'conversations', value: all });
   };
 
-  const handleChannelChange = (channel: number) => {
+  const handleStreamChange = (stream: string) => {
     if (selectedConversation) {
       const updatedConversation = {
         ...selectedConversation,
-        selectedChannel: channel,
+        selectedStream: stream,
       };
       dispatch({ field: 'selectedConversation', value: updatedConversation });
       saveConversation(updatedConversation);
@@ -243,29 +243,29 @@ const Home = (props: any) => {
     }
   }, [dispatch, t]);
 
-  // Poll /api/update-text every 2 seconds to discover available channels
+  // Poll /api/update-text every 2 seconds to discover available streams
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
-        // Get available channels
-        const channelsRes = await fetch('/api/update-text');
-        if (channelsRes.ok) {
-          const channelsData = await channelsRes.json();
-          if (channelsData.channels && Array.isArray(channelsData.channels)) {
-            // Only update if channels actually changed
-            const currentChannels = availableChannels || [];
-            const newChannels = channelsData.channels;
-            if (JSON.stringify(currentChannels.sort()) !== JSON.stringify(newChannels.sort())) {
-              dispatch({ field: 'availableChannels', value: newChannels });
+        // Get available streams
+        const streamsRes = await fetch('/api/update-text');
+        if (streamsRes.ok) {
+          const streamsData = await streamsRes.json();
+          if (streamsData.streams && Array.isArray(streamsData.streams)) {
+            // Only update if streams actually changed
+            const currentStreams = availableStreams || [];
+            const newStreams = streamsData.streams;
+            if (JSON.stringify(currentStreams.sort()) !== JSON.stringify(newStreams.sort())) {
+              dispatch({ field: 'availableStreams', value: newStreams });
             }
           }
         }
       } catch (err) {
         // Optionally handle error
       }
-    }, 2000); // Less frequent polling for channel discovery
+    }, 2000); // Less frequent polling for stream discovery
     return () => clearInterval(interval);
-  }, [dispatch, availableChannels]);
+  }, [dispatch, availableStreams]);
 
   return (
     <HomeContext.Provider
@@ -303,10 +303,10 @@ const Home = (props: any) => {
             <main className="flex flex-col w-full pt-0 relative border-l md:pt-0 dark:border-white/20 transition-width">
               <div className="flex-1 flex flex-col bg-white dark:bg-[#343541] min-h-screen">
                 <ChatHeader webSocketModeRef={webSocketModeRef} />
-                                <TextDisplay
-                  availableChannels={availableChannels || []}
-                  selectedChannel={selectedConversation?.selectedChannel || 0}
-                  onChannelChange={handleChannelChange}
+                <TextDisplay
+                  availableStreams={availableStreams || []}
+                  selectedStream={selectedConversation?.selectedStream || (availableStreams && availableStreams.length > 0 ? availableStreams[0] : 'default')}
+                  onStreamChange={handleStreamChange}
                 />
                 <Chat />
               </div>

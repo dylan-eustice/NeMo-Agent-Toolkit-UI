@@ -27,7 +27,7 @@ export interface HomeInitialState {
   intermediateStepOverride?: boolean;
   autoScroll?: boolean;
   additionalConfig: any;
-  availableChannels: number[];
+  availableStreams: string[];
 }
 
 export const initialState: HomeInitialState = {
@@ -54,5 +54,5 @@ export const initialState: HomeInitialState = {
   intermediateStepOverride: true,
   autoScroll: true,
   additionalConfig: {},
-  availableChannels: [],
+  availableStreams: [],
 };
