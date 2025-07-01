@@ -46,7 +46,7 @@ const Home = (props: any) => {
     initialState,
   });
 
-  let workflow =  'AgentIQ';
+  let workflow =  'Streaming Data to RAG';
 
   const {
     state: {
