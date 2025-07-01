@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { IconRefresh, IconFilter, IconHistory, IconSortAscending, IconSortDescending } from '@tabler/icons-react';
+import { IconRefresh, IconFilter, IconHistory, IconSortAscending, IconSortDescending, IconClock, IconCheck } from '@tabler/icons-react';
 import HomeContext from './api/home/home.context';
 
 interface FinalizedTranscript {
@@ -7,6 +7,8 @@ interface FinalizedTranscript {
   channel_id: number;
   timestamp: number;
   id: string;
+  uuid?: string;
+  pending?: boolean;
 }
 
 const TranscriptHistory = () => {
@@ -220,9 +222,35 @@ const TranscriptHistory = () => {
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getChannelColor(transcript.channel_id)}`}>
                         {formatChannelName(transcript.channel_id)}
                       </span>
+                      {/* Processing Status Indicator */}
+                      {transcript.pending !== undefined && (
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          transcript.pending
+                            ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                            : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                        }`}>
+                          {transcript.pending ? (
+                            <>
+                              <IconClock className="w-3 h-3 mr-1" />
+                              Pending Database Processing
+                            </>
+                          ) : (
+                            <>
+                              <IconCheck className="w-3 h-3 mr-1" />
+                              Ingested by Database
+                            </>
+                          )}
+                        </span>
+                      )}
                       <span className="text-sm text-gray-500 dark:text-gray-400">
                         {formatTimestamp(transcript.timestamp)}
                       </span>
+                      {/* UUID Display (for debugging/admin purposes) */}
+                      {transcript.uuid && (
+                        <span className="text-xs text-gray-400 dark:text-gray-500 font-mono">
+                          ID: {transcript.uuid.substring(0, 8)}...
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="prose prose-sm max-w-none dark:prose-invert">
